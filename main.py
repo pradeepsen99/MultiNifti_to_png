@@ -10,6 +10,7 @@ import threading
 INPUT_FOLDER = "input_nii/"
 MASK_IDENTIFIER = "-mask"
 THREADED = True
+MULTI_AXIS = False
 
 #========= gz compressed file conversion =========#
 
@@ -34,24 +35,27 @@ for i in compressed_files:
 #========= med2image conversion =========#
 
 nii_files = os.listdir(INPUT_FOLDER)
+
 #Of the files that have .nii in them filter out if it does or doesn't have the MASK_IDENTIFIER in them
 pig_nii = [f for f in [f for f in nii_files if ".nii" in f] if MASK_IDENTIFIER not in f]
 mask_nii = [f for f in [f for f in nii_files if ".nii" in f] if MASK_IDENTIFIER in f]
 
-def med2image_run(input_dir, output_dir, filetype, reslice):
+def med2image_run(input_dir, output_dir, filetype, file_stem, reslice):
     if reslice:
-        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + "  -s -1 --reslice")
+        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + " -o " + file_stem + " -s -1 --reslice")
     else:
-        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + "  -s -1")
+        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + " -o " + file_stem + "  -s -1")
         
-testing_file_num = 2
+testing_file_num = 1
+RAW_FOLDER = 
 
+#Pig files 
 shutil.rmtree("pig_nii_raw")
 os.mkdir("pig_nii_raw")
 pig_nii_threads = []
 for i in pig_nii[:testing_file_num]:
     #med2image_run(INPUT_FOLDER+i, "pig_nii_raw", "png", True)
-    pig_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "pig_nii_raw", "png", True)))
+    pig_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "pig_nii_raw", "png", i[:-4], MULTI_AXIS)))
 
 if THREADED:
     for i in pig_nii_threads:
@@ -60,12 +64,15 @@ if THREADED:
     for i in pig_nii_threads:
         i.join()
 
-shutil.rmtree("mask_nii_raw")
+#Mask files
+if os.path.exists(dir):
+    shutil.rmtree("mask_nii_raw")
+
 mask_nii_threads = []
 os.mkdir("mask_nii_raw")
 for i in mask_nii[:testing_file_num]:
     #med2image_run(INPUT_FOLDER+i, "mask_nii_raw", "png", True)
-    mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "mask_nii_raw", "png", True)))
+    mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "mask_nii_raw", "png", i[:-4], MULTI_AXIS)))
 
 if THREADED:
     for i in mask_nii_threads:
@@ -73,3 +80,8 @@ if THREADED:
 
     for i in mask_nii_threads:
         i.join()
+
+#========= Convert into training/validation =========#
+
+shutil.rmtree("pig_nii_train")
+os.mkdir("pig_nii_train")

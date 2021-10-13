@@ -1,8 +1,17 @@
+#Virtual Environment=
 /nii_env
+/nifti_env
+
+#Testing directories
 /4week
 /out_test
-/input_nii
-/nifti_env
 /1out_test
 /1out_test_mask
+
+#Input nii directory
+/input_nii
+
+#Intermediate processing directories
 /mask_nii
+/mask_nii_raw
+/pig_nii_raw
