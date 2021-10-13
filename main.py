@@ -7,10 +7,11 @@ import gzip
 import shutil
 import threading
 
-INPUT_FOLDER = "input_nii/"
+INPUT_FOLDER = "4week/"
 MASK_IDENTIFIER = "-mask"
 THREADED = True
 MULTI_AXIS = False
+TRAIN_VAL_SPLIT = .8
 
 #========= gz compressed file conversion =========#
 
@@ -47,11 +48,12 @@ def med2image_run(input_dir, output_dir, filetype, file_stem, reslice):
         os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + " -o " + file_stem + "  -s -1")
         
 testing_file_num = 1
-RAW_FOLDER = 
 
 #Pig files 
-shutil.rmtree("pig_nii_raw")
-os.mkdir("pig_nii_raw")
+RAW_FOLDER_PIG = "pig_nii_raw/"
+if os.path.exists(RAW_FOLDER_PIG):
+    shutil.rmtree(RAW_FOLDER_PIG)
+os.mkdir(RAW_FOLDER_PIG)
 pig_nii_threads = []
 for i in pig_nii[:testing_file_num]:
     #med2image_run(INPUT_FOLDER+i, "pig_nii_raw", "png", True)
@@ -65,11 +67,11 @@ if THREADED:
         i.join()
 
 #Mask files
-if os.path.exists(dir):
-    shutil.rmtree("mask_nii_raw")
-
+RAW_FOLDER_MASK = "mask_nii_raw/"
+if os.path.exists(RAW_FOLDER_MASK):
+    shutil.rmtree(RAW_FOLDER_MASK)
 mask_nii_threads = []
-os.mkdir("mask_nii_raw")
+os.mkdir(RAW_FOLDER_MASK)
 for i in mask_nii[:testing_file_num]:
     #med2image_run(INPUT_FOLDER+i, "mask_nii_raw", "png", True)
     mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "mask_nii_raw", "png", i[:-4], MULTI_AXIS)))
@@ -83,5 +85,39 @@ if THREADED:
 
 #========= Convert into training/validation =========#
 
-shutil.rmtree("pig_nii_train")
-os.mkdir("pig_nii_train")
+TRAIN_FOLDER = "pig_nii_train/"
+VALIDATE_FOLDER = "pig_nii_val/"
+if os.path.exists(TRAIN_FOLDER):
+    shutil.rmtree(TRAIN_FOLDER)
+os.mkdir(TRAIN_FOLDER)
+if os.path.exists(VALIDATE_FOLDER):
+    shutil.rmtree(VALIDATE_FOLDER)
+os.mkdir(VALIDATE_FOLDER)
+
+pig_files = os.listdir(RAW_FOLDER_PIG)
+mask_files = os.listdir(RAW_FOLDER_MASK)
+
+num_train = int(len(pig_files) * TRAIN_VAL_SPLIT)-1
+num_val = len(pig_files) - num_train - 1
+
+
+if os.path.exists(TRAIN_FOLDER + "image"):
+    shutil.rmtree(TRAIN_FOLDER + "image")
+os.mkdir(TRAIN_FOLDER + "image")
+if os.path.exists(TRAIN_FOLDER + "segmentation"):
+    shutil.rmtree(TRAIN_FOLDER + "segmentation")
+os.mkdir(TRAIN_FOLDER + "segmentation")
+for i in range(0, num_train):
+    shutil.move(RAW_FOLDER_PIG + pig_files[i] , TRAIN_FOLDER + "image/" + pig_files[i])
+    shutil.move(RAW_FOLDER_MASK + mask_files[i] , TRAIN_FOLDER + "segmentation/" + mask_files[i])
+
+
+if os.path.exists(VALIDATE_FOLDER + "image"):
+    shutil.rmtree(VALIDATE_FOLDER + "image")
+os.mkdir(VALIDATE_FOLDER + "image")
+if os.path.exists(VALIDATE_FOLDER + "segmentation"):
+    shutil.rmtree(VALIDATE_FOLDER + "segmentation")
+os.mkdir(VALIDATE_FOLDER + "segmentation")
+for i in range(num_train, num_val):
+    shutil.move(RAW_FOLDER_PIG + pig_files[i] , VALIDATE_FOLDER + "image/" + pig_files[i])
+    shutil.move(RAW_FOLDER_MASK + mask_files[i] , VALIDATE_FOLDER + "segmentation/" + mask_files[i])

@@ -15,3 +15,5 @@
 /mask_nii
 /mask_nii_raw
 /pig_nii_raw
+/pig_nii_train
+/pig_nii_val
