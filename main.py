@@ -4,9 +4,12 @@
 
 import os
 import gzip
+import shutil
+import threading
 
 INPUT_FOLDER = "input_nii/"
 MASK_IDENTIFIER = "-mask"
+THREADED = True
 
 #========= gz compressed file conversion =========#
 
@@ -25,7 +28,48 @@ def gz_to_nii(source_filepath, dest_filepath, block_size=65536):
 
 
 for i in compressed_files:
-    gz_to_nii(INPUT_FOLDER + i, INPUT_FOLDER + i[:-3] + ".nii")
+    gz_to_nii(INPUT_FOLDER + i, INPUT_FOLDER + i[:-3])
     os.remove(INPUT_FOLDER + i)
     
 #========= med2image conversion =========#
+
+nii_files = os.listdir(INPUT_FOLDER)
+#Of the files that have .nii in them filter out if it does or doesn't have the MASK_IDENTIFIER in them
+pig_nii = [f for f in [f for f in nii_files if ".nii" in f] if MASK_IDENTIFIER not in f]
+mask_nii = [f for f in [f for f in nii_files if ".nii" in f] if MASK_IDENTIFIER in f]
+
+def med2image_run(input_dir, output_dir, filetype, reslice):
+    if reslice:
+        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + "  -s -1 --reslice")
+    else:
+        os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + "  -s -1")
+        
+testing_file_num = 2
+
+shutil.rmtree("pig_nii_raw")
+os.mkdir("pig_nii_raw")
+pig_nii_threads = []
+for i in pig_nii[:testing_file_num]:
+    #med2image_run(INPUT_FOLDER+i, "pig_nii_raw", "png", True)
+    pig_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "pig_nii_raw", "png", True)))
+
+if THREADED:
+    for i in pig_nii_threads:
+        i.start()
+
+    for i in pig_nii_threads:
+        i.join()
+
+shutil.rmtree("mask_nii_raw")
+mask_nii_threads = []
+os.mkdir("mask_nii_raw")
+for i in mask_nii[:testing_file_num]:
+    #med2image_run(INPUT_FOLDER+i, "mask_nii_raw", "png", True)
+    mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "mask_nii_raw", "png", True)))
+
+if THREADED:
+    for i in mask_nii_threads:
+        i.start()
+
+    for i in mask_nii_threads:
+        i.join()
