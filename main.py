@@ -36,6 +36,8 @@ for i in compressed_files:
 #========= med2image conversion =========#
 
 nii_files = os.listdir(INPUT_FOLDER)
+#nii_files = nii_files[:5]
+nii_files.sort()
 
 #Of the files that have .nii in them filter out if it does or doesn't have the MASK_IDENTIFIER in them
 pig_nii = [f for f in [f for f in nii_files if ".nii" in f] if MASK_IDENTIFIER not in f]
@@ -47,7 +49,6 @@ def med2image_run(input_dir, output_dir, filetype, file_stem, reslice):
     else:
         os.system("med2image -i " + input_dir + " -d " + output_dir + " --outputFileType " + filetype + " -o " + file_stem + "  -s -1")
         
-testing_file_num = 1
 
 #Pig files 
 RAW_FOLDER_PIG = "pig_nii_raw/"
@@ -55,9 +56,9 @@ if os.path.exists(RAW_FOLDER_PIG):
     shutil.rmtree(RAW_FOLDER_PIG)
 os.mkdir(RAW_FOLDER_PIG)
 pig_nii_threads = []
-for i in pig_nii[:testing_file_num]:
-    #med2image_run(INPUT_FOLDER+i, "pig_nii_raw", "png", True)
-    pig_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "pig_nii_raw", "png", i[:-4], MULTI_AXIS)))
+for i in pig_nii:
+    #med2image_run(INPUT_FOLDER+i, RAW_FOLDER_PIG, "png", i[:-4], MULTI_AXIS)
+    pig_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, RAW_FOLDER_PIG, "png", i[:-4], MULTI_AXIS)))
 
 if THREADED:
     for i in pig_nii_threads:
@@ -72,9 +73,9 @@ if os.path.exists(RAW_FOLDER_MASK):
     shutil.rmtree(RAW_FOLDER_MASK)
 mask_nii_threads = []
 os.mkdir(RAW_FOLDER_MASK)
-for i in mask_nii[:testing_file_num]:
-    #med2image_run(INPUT_FOLDER+i, "mask_nii_raw", "png", True)
-    mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, "mask_nii_raw", "png", i[:-4], MULTI_AXIS)))
+for i in mask_nii:
+    #med2image_run(INPUT_FOLDER+i, RAW_FOLDER_MASK, "png", i[:-4], MULTI_AXIS)
+    mask_nii_threads.append(threading.Thread(target=med2image_run, args=(INPUT_FOLDER+i, RAW_FOLDER_MASK, "png", i[:-4], MULTI_AXIS)))
 
 if THREADED:
     for i in mask_nii_threads:
@@ -84,6 +85,7 @@ if THREADED:
         i.join()
 
 #========= Convert into training/validation =========#
+print("===========================================================================")
 
 TRAIN_FOLDER = "pig_nii_train/"
 VALIDATE_FOLDER = "pig_nii_val/"
@@ -95,10 +97,11 @@ if os.path.exists(VALIDATE_FOLDER):
 os.mkdir(VALIDATE_FOLDER)
 
 pig_files = os.listdir(RAW_FOLDER_PIG)
+pig_files.sort()
 mask_files = os.listdir(RAW_FOLDER_MASK)
+mask_files.sort()
 
-num_train = int(len(pig_files) * TRAIN_VAL_SPLIT)-1
-num_val = len(pig_files) - num_train - 1
+num_train = int(len(pig_files) * TRAIN_VAL_SPLIT)
 
 
 if os.path.exists(TRAIN_FOLDER + "image"):
@@ -118,6 +121,12 @@ os.mkdir(VALIDATE_FOLDER + "image")
 if os.path.exists(VALIDATE_FOLDER + "segmentation"):
     shutil.rmtree(VALIDATE_FOLDER + "segmentation")
 os.mkdir(VALIDATE_FOLDER + "segmentation")
-for i in range(num_train, num_val):
+for i in range(num_train, len(pig_files)):
     shutil.move(RAW_FOLDER_PIG + pig_files[i] , VALIDATE_FOLDER + "image/" + pig_files[i])
     shutil.move(RAW_FOLDER_MASK + mask_files[i] , VALIDATE_FOLDER + "segmentation/" + mask_files[i])
+
+print("Training images: " + str(num_train))
+print("Pig files" + str(pig_files))
+print("Mask files" + str(mask_files))
+print(str(len(pig_files)))
+print(str(len(mask_files)))
